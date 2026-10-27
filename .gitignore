@@ -1,0 +1,25 @@
+# Secrets (commit .env.example, never .env)
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+
+# RAG data and eval results (Steps 6 and 9)
+backend/data/
+backend/tests/evals/results/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

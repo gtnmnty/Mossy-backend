@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+anthropic
+sse-starlette
+slowapi
+httpx
+pytest
+pytest-asyncio
