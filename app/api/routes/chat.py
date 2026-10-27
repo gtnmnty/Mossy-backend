@@ -1,5 +1,6 @@
 import anthropic
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
@@ -7,9 +8,11 @@ from app.core.config import settings
 from app.deps import get_client
 from app.schemas.schema import ChatRequest
 from app.services.history import trim
-from app.services.llm import reply, SYSTEM_PROMPT
+from app.services.llm import reply, build_request
 
 router = APIRouter()
+log = logging.getLogger("mossy")
+
 
 # Non-streaming fallback: waits for the full answer, then returns it as one JSON body.
 @router.post("/chat")
@@ -32,17 +35,24 @@ async def chat_stream(req: ChatRequest, client=Depends(get_client)):
     async def gen():
         try:
             # AsyncAnthropic only: a sync client here would block the whole event loop.
-            async with client.messages.stream(
-                model=settings.model,
-                max_tokens=settings.max_tokens,
-                system=SYSTEM_PROMPT,
-                messages=trim(req.messages),  # validated history, capped to the last N turns
-            ) as stream:
+            kwargs = await build_request(client, req.messages)
+            print(list(kwargs.keys()))
+            async with client.messages.stream(**kwargs) as stream:
                 # text_stream yields each new piece of text as Claude generates it.
-                async for text in stream.text_stream:
-                    yield {"event": "delta", "data": json.dumps({"text": text})}
+                async for event in stream:
+                    if event.type == "content_block_start":
+                        log.info("block start: %s", event.content_block.type)
+                    elif event.type == "content_block_delta" and event.delta.type == "text_delta":
+                        yield {"event": "delta", "data": json.dumps({"text": event.delta.text})}
                 # After the text ends, the full message gives us the token usage.
                 final = await stream.get_final_message()
+                log.info("stop=%s blocks=%s", final.stop_reason, [b.type for b in final.content])
+
+                u = final.usage
+                log.info("in=%s out=%s cache_write=%s cache_read=%s",
+                     u.input_tokens, u.output_tokens,
+                     u.cache_creation_input_tokens, u.cache_read_input_tokens)
+
                 yield {"event": "done",
                        "data": json.dumps({"usage": final.usage.model_dump()})}
         except anthropic.APIError as e:
