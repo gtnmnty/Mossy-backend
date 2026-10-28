@@ -13,4 +13,9 @@ class Settings(BaseSettings):
     max_tokens: int = 1024
     max_history_turns: int = 30
 
+    # Feature 6: RAG. Empty by default so the app still starts (and chat still works)
+    # if Voyage isn't set up yet; search_documents just returns nothing until it is.
+    voyage_api_key: str = ""
+    embed_model: str = "voyage-4"
+
 settings = Settings()

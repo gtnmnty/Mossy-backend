@@ -15,8 +15,10 @@ node_modules/
 .next/
 
 # RAG data and eval results (Steps 6 and 9)
-backend/data/
-backend/tests/evals/results/
+# Paths are relative to this file, and this file is already inside backend/, so no
+# "backend/" prefix here — that prefix was looking for a backend/backend/ folder.
+data/
+tests/evals/results/
 
 # Editor / OS
 .idea/
