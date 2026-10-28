@@ -26,3 +26,19 @@ class ChatRequest(BaseModel):
         return self
 
 
+# Feature 8: Structured outputs (titles and follow-ups)
+# Request for /chat/meta. No "last message is from the user" check here: this is called
+# after Mossy's reply is already in the history, so the list naturally ends with Mossy's turn.
+class ChatMetaRequest(BaseModel):
+    messages: list[Msg] = Field(min_length=1, max_length=200)
+
+
+# What /chat/meta returns: a short title for the conversation and some follow-up questions
+# the user might want to ask next. Limits (3 to 6 words, exactly 3 follow-ups) are written
+# into the descriptions, not as Field(min_length=...) rules, because Claude's structured
+# outputs support only a small set of JSON Schema features — no minLength/maxLength and no
+# minItems other than 0 or 1.
+class ChatMeta(BaseModel):
+    title: str = Field(description="A 3 to 6 word title for the conversation, no quotes")
+    followups: list[str] = Field(description="Exactly 3 short follow-up questions the user might ask next")
+

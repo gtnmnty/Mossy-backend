@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from app.deps import get_client
-from app.schemas.schema import ChatRequest
-from app.services.llm import reply, run_with_tools
+from app.schemas.schema import ChatMeta, ChatMetaRequest, ChatRequest
+from app.services.llm import make_meta, reply, run_with_tools
 
 router = APIRouter()
 log = logging.getLogger("mossy")
@@ -47,3 +47,17 @@ async def chat_stream(req: ChatRequest, client=Depends(get_client)):
 
     # sse-starlette frames each yielded dict as "event: ...\r\ndata: ...\r\n\r\n".
     return EventSourceResponse(gen())
+
+
+# Feature 8: Structured outputs
+# A separate route, called after a reply finishes, so a slow or failed title call never
+# holds up the chat itself. On any failure it falls back to the start of the first message
+# as the title and no follow-ups, instead of breaking the UI.
+@router.post("/chat/meta", response_model=ChatMeta)
+async def chat_meta(req: ChatMetaRequest, client=Depends(get_client)):
+    try:
+        return await make_meta(client, req.messages)
+    except Exception:
+        log.exception("chat/meta failed, falling back to a plain title")
+        first = req.messages[0].content[:40]
+        return ChatMeta(title=first, followups=[])

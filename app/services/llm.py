@@ -1,6 +1,7 @@
 # The one place that talks to Claude. Both routes in chat.py call into this file.
 from app.core.config import settings
 from app.services.history import trim_by_tokens
+from app.schemas.schema import ChatMeta
 from pathlib import Path
 import json
 import logging
@@ -53,6 +54,29 @@ async def build_request(client, messages, system=SYSTEM_PROMPT, think: bool = Fa
 # Non-streaming call used by the /chat fallback route. Waits for the whole answer at once.
 async def reply(client, messages, system=SYSTEM_PROMPT, think: bool = False):
     return await client.messages.create(**await build_request(client, messages, system, think))
+
+
+# Feature 8: Structured outputs (titles and follow-ups)
+# Asks Claude for a short title and 3 follow-up questions, shaped exactly like ChatMeta.
+# Flow: take the last few turns -> write them out as a plain transcript inside one user
+# message (not as separate role-tagged messages, so there is no risk of two user turns
+# landing back to back, which the API rejects) -> ask the small, cheap model to fill the
+# ChatMeta shape -> return it, already validated. Runs after the chat reply, never during it.
+async def make_meta(client, messages) -> ChatMeta:
+    recent = messages[-6:]
+    transcript = "\n\n".join(f"{m.role}: {m.content[:500]}" for m in recent)
+    resp = await client.messages.parse(
+        model=settings.small_model,
+        max_tokens=300,
+        system="You write short titles and follow-up questions for a chatbot's conversations.",
+        messages=[{
+            "role": "user",
+            "content": f"<conversation>\n{transcript}\n</conversation>\n\n"
+                       "Give a title and 3 follow-up questions for this conversation.",
+        }],
+        output_format=ChatMeta,
+    )
+    return resp.parsed_output
 
 
 # Feature 5: Tools
