@@ -1,3 +1,6 @@
+# All settings in one place. Values come from backend/.env;
+# CLAUDE_MODEL in .env picks the model.
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

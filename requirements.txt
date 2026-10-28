@@ -7,3 +7,4 @@ slowapi
 httpx
 pytest
 pytest-asyncio
+tzdata
