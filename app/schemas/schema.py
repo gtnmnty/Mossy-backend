@@ -15,6 +15,8 @@ class Msg(BaseModel):
 # user, because Claude has to have something to answer.
 class ChatRequest(BaseModel):
     messages: list[Msg] = Field(min_length=1, max_length=200)
+    # Feature 7: "Think harder" toggle. When true, Claude reasons before answering.
+    think: bool = False
 
     @model_validator(mode="after")
     def is_user_last(self):

@@ -18,4 +18,8 @@ class Settings(BaseSettings):
     voyage_api_key: str = ""
     embed_model: str = "voyage-4"
 
+    # Feature 7: Extended thinking. A bigger budget than max_tokens, because thinking
+    # tokens count against this limit too and a short cap would cut thinking off early.
+    think_max_tokens: int = 16000
+
 settings = Settings()

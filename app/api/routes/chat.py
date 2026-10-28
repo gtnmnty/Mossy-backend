@@ -20,7 +20,7 @@ log = logging.getLogger("mossy")
 @router.post("/chat")
 async def chat(req: ChatRequest, client=Depends(get_client)):
     try:
-        res = await reply(client, req.messages)
+        res = await reply(client, req.messages, think=req.think)
     except anthropic.APIError as e:
         # HTTPException keeps CORS headers, so the browser sees the real error
         raise HTTPException(status_code=502, detail=str(e))
@@ -28,17 +28,18 @@ async def chat(req: ChatRequest, client=Depends(get_client)):
     return {"reply": text}
 
 
-# Feature 3: Streaming
+# Feature 3 + Feature 7: Streaming
 # Sends Claude's reply to the browser piece by piece over Server-Sent Events (SSE),
 # so text appears as it is written instead of after a long wait.
-# Events: "delta" (a text chunk), "tool" (Mossy is using a tool),
-# "done" (finished, with token usage), "error" (something failed).
+# Events: "thinking" (a reasoning chunk, only when req.think is true), "delta" (an answer
+# text chunk), "tool" (Mossy is using a tool), "done" (finished, with token usage),
+# "error" (something failed).
 @router.post("/chat/stream")
 async def chat_stream(req: ChatRequest, client=Depends(get_client)):
     # Every `yield` becomes one SSE event on the open HTTP response.
     async def gen():
         try:
-            async for ev in run_with_tools(client, req.messages):
+            async for ev in run_with_tools(client, req.messages, think=req.think):
                 yield ev
         except anthropic.APIError as e:
             log.error("Claude API error: %s", e)
